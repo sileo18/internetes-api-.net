@@ -50,18 +50,27 @@ namespace WordsAPI.Repositories
 
         public async Task<IEnumerable<Word>> SearchByTermAsync(string termQuery)
         {
-            // Usando ILike para busca case-insensitive.
-            // Para PostgreSQL, você pode habilitar a extensão pg_trgm e usar funções de similaridade
-            // como SIMILARITY(w.Term, termQuery) > 0.2 OR w.Term ILIKE '%' || termQuery || '%'
-            // Isso exigiria uma raw query ou uma função mapeada.
-            var query = termQuery.ToLowerInvariant();
-            return await _context.Words
-                                 .Include(w => w.ExamplesNavigation)
-                                 .Include(w => w.SynonymsNavigation)
-                                 .Where(w => EF.Functions.ILike(w.Term, $"%{query}%") ||
-                                             EF.Functions.ILike(w.Definition, $"%{query}%"))
-                                 .OrderBy(w => w.Term)
-                                 .ToListAsync();
+            // Limite de similaridade
+            const double similarityThreshold = 0.3;
+            var queryLower = termQuery.ToLowerInvariant(); // Para ILIKE
+
+            // Construir a query
+            var query = _context.Words
+                .Include(w => w.ExamplesNavigation) // Ajuste para ExamplesNavigation se for o nome
+                .Include(w => w.SynonymsNavigation) // Ajuste para SynonymsNavigation se for o nome
+                .Select(w => new // Projetar para um objeto anônimo para incluir a similaridade
+                {
+                    Word = w,
+                    SimilarityScore = ApplicationDbContext.WordSimilarity(w.Term, termQuery)
+                })
+                .Where(x => x.SimilarityScore > similarityThreshold ||
+                             EF.Functions.ILike(x.Word.Term, $"%{queryLower}%")// Fallback para ILIKE no termo
+                             ) // Opcional: ILIKE na definição também
+                .OrderByDescending(x => x.SimilarityScore) // Ordenar pela similaridade
+                .ThenBy(x => x.Word.Term) // Ordenação secundária (opcional)
+                .Select(x => x.Word); // Selecionar apenas a entidade Word no final
+
+            return await query.ToListAsync();
         }
     }
 }

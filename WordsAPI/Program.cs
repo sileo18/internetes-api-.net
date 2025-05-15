@@ -1,10 +1,14 @@
 // Program.cs
 using Microsoft.EntityFrameworkCore;
+using WordsAPI.Config;
 using WordsAPI.Domain;
 using WordsAPI.Repositories;
 using WordsAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddTransient<IEmailService, EmailService>();
 
 // Adicionar serviços ao contêiner.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
