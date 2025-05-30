@@ -1,4 +1,6 @@
 // Program.cs
+
+using System.Reflection;
 using Microsoft.EntityFrameworkCore; // Certifique-se de que esta importação está presente
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
@@ -35,11 +37,12 @@ builder.Services.AddScoped<IWordService, WordService>();
 builder.Services.AddEndpointsApiExplorer(); // Necessário para Minimal APIs no Swagger
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo() { Title = "Nome da sua API", Version = "v1" });
-    // Se você tiver comentários XML da documentação, adicione aqui:
-    // var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    // var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    // c.IncludeXmlComments(xmlPath);
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "WordsAPI", Version = "v1", Description = "Uma API para gerenciar palavras e suas definições." });
+
+    // Configura para incluir os comentários XML gerados
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
 });
 
 // Configuração de Controllers e Serialização JSON

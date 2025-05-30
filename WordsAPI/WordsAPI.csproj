@@ -6,6 +6,11 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 
+	<PropertyGroup>
+ 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+  		<NoWarn>$(NoWarn);1591</NoWarn>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<!-- Use uma versão estável do EF Core 8, ex: 8.0.4 ou 8.0.5 -->
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.4" />

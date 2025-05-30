@@ -22,7 +22,7 @@ public class CacheService : ICacheService
         {
             return default;
         }
-        return JsonSerializer.Deserialize<T>(value);
+        return JsonSerializer.Deserialize<T?>(value);
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
