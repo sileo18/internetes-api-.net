@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using WordsAPI.CacheService;
 using WordsAPI.Domain;
 using WordsAPI.DTO_s;
 using WordsAPI.Repositories;
@@ -13,23 +14,49 @@ namespace WordsAPI.Services
     {
         private readonly IWordRepository _wordRepository;
 
-        public WordService(IWordRepository wordRepository)
+        private readonly ICacheService _cacheService;
+
+        public WordService(IWordRepository wordRepository, ICacheService cacheService)
         {
             _wordRepository = wordRepository;
+            _cacheService = cacheService;
         }
 
         public async Task<WordResponseDto?> GetWordByIdAsync(long id)
         {
+            var cacheKey = $"word_id{id}";
+
+            var cacheResult = await _cacheService.GetAsync<WordResponseDto>(cacheKey);
+
+            if (cacheResult != null)
+            {
+                return cacheResult;
+            }
+            
             var word = await _wordRepository.GetByIdAsync(id);
+
+            await _cacheService.SetAsync(cacheKey, word, TimeSpan.FromMinutes(5));
+            
             return word != null ? MapToResponseDto(word) : null;
         }
 
         public async Task<PaginatedWordsResponseDto> GetAllWordsAsync(int pageNumber, int pageSize)
         {
+            var cacheKey = $"words_all_{pageNumber}_{pageSize}";
+
+            var cachedResult = await _cacheService.GetAsync<PaginatedWordsResponseDto>(cacheKey);
+
+            if (cachedResult != null)
+            {
+                Console.WriteLine((">>>>>>REDIS!"));
+                return cachedResult;
+            }
+            
             var words = await _wordRepository.GetAllAsync(pageNumber, pageSize);
+            
             var totalCount = await _wordRepository.GetTotalCountAsync();
 
-            return new PaginatedWordsResponseDto
+            PaginatedWordsResponseDto response = new PaginatedWordsResponseDto
             {
                 Words = words.Select(MapToResponseDto).ToList(),
                 CurrentPage = pageNumber,
@@ -37,6 +64,10 @@ namespace WordsAPI.Services
                 TotalCount = totalCount,
                 TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
             };
+
+            await _cacheService.SetAsync(cacheKey, response, TimeSpan.FromDays(7));
+
+            return response;
         }
 
         public async Task<WordResponseDto?> CreateWordAsync(CreateWordDto createWordDto)
@@ -96,8 +127,25 @@ namespace WordsAPI.Services
 
         public async Task<IEnumerable<WordResponseDto>> SearchWordsAsync(string termQuery)
         {
+            var cacheKey = $"word_{termQuery.ToLowerInvariant()}";
+
+            var cachedResult = await _cacheService.GetAsync<List<WordResponseDto>>(cacheKey);
+
+            if (cachedResult != null)
+            {
+                Console.WriteLine((">>>>REDIS!!"));
+                return cachedResult;
+            }
+            
             var words = await _wordRepository.SearchByTermAsync(termQuery);
-            return words.Select(MapToResponseDto);
+            
+            var response = words.Select(MapToResponseDto);
+
+            await _cacheService.SetAsync(cacheKey, response, TimeSpan.FromSeconds(60));
+            
+            return response;
+
+
         }
 
         //public async Task<WordResponseDto?> MarkWordAsAdoptedAsync(long id, AdoptWordDto adoptWordDto)

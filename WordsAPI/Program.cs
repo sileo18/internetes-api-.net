@@ -1,5 +1,8 @@
 // Program.cs
-using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore; // Certifique-se de que esta importa√ß√£o est√° presente
+using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
+using WordsAPI.CacheService;
 using WordsAPI.Config;
 using WordsAPI.Domain;
 using WordsAPI.Repositories;
@@ -7,59 +10,73 @@ using WordsAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configura√ß√£o de Email
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("RedisConnection"));
 
-// Adicionar serviÁos ao contÍiner.
+    return ConnectionMultiplexer.Connect(configuration);
+});
+builder.Services.AddScoped<ICacheService, CacheService>();
+
+// Configura√ß√£o do DbContext com QuerySplittingBehavior.SplitQuery
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString)); // Opcional: para mapear PascalCase para snake_case
+    options.UseNpgsql(connectionString));
+           
 
-// Registrar RepositÛrios e ServiÁos para InjeÁ„o de DependÍncia
+// Registro de Reposit√≥rios e Servi√ßos
 builder.Services.AddScoped<IWordRepository, WordRepository>();
 builder.Services.AddScoped<IWordService, WordService>();
-// Adicione outros aqui (IUserRepository, UserRepository, IUserService, UserService, etc.)
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options => // Opcional: para configurar serializaÁ„o JSON
-    {
-        // options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles; // Para evitar ciclos se n„o usar DTOs
-        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull; // N„o serializar nulos
-    });
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options => // ConfiguraÁıes do Swagger
+// Configura√ß√£o do Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer(); // Necess√°rio para Minimal APIs no Swagger
+builder.Services.AddSwaggerGen(c =>
 {
-    // options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Internetes API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo() { Title = "Nome da sua API", Version = "v1" });
+    // Se voc√™ tiver coment√°rios XML da documenta√ß√£o, adicione aqui:
+    // var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    // var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    // c.IncludeXmlComments(xmlPath);
 });
 
+// Configura√ß√£o de Controllers e Serializa√ß√£o JSON
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
+// Adicionado novamente, mas AddEndpointsApiExplorer j√° est√° acima. Pode ser removido se duplicado.
+// builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
-// Configurar o pipeline de requisiÁıes HTTP.
+// Configura√ß√£o do Pipeline de Requisi√ß√µes HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        // c.SwaggerEndpoint("/swagger/v1/swagger.json", "Internetes API V1");
-        // c.RoutePrefix = string.Empty; // Para acessar Swagger na raiz (/) em dev
+        // Configura√ß√µes para a UI do Swagger (opcional, mas comum)
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Nome da sua API V1");
+        c.RoutePrefix = string.Empty; // Para que a UI esteja na raiz (ex: http://localhost:5000/)
     });
-    // app.UseDeveloperExceptionPage(); // J· habilitado por padr„o em dev
 }
 else
 {
-    // Adicionar um middleware de tratamento de exceÁıes global para produÁ„o
-    app.UseExceptionHandler("/error"); // VocÍ precisaria criar um endpoint /error
+    // Configura√ß√µes para produ√ß√£o
+    app.UseExceptionHandler("/error");
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-
-// app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()); // Configure CORS apropriadamente
+app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()); // Configura√ß√£o de CORS
 
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers(); // Mapeia os endpoints dos controladores
 
 app.Run();

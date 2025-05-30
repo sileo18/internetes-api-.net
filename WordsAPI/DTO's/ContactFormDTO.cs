@@ -1,9 +1,14 @@
-﻿namespace WordsAPI.DTO_s
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace WordsAPI.DTO_s
 {
     public class ContactFormDTO
     {
-        public string name {get; set;} 
-        public string email {get; set;}  
+        [Required] public string name { get; set; } = null!;
+        
+        [Required]
+        public string email { get; set; } = null!;
+        
         public string subject {get; set; }
         public string message {get; set; }
 

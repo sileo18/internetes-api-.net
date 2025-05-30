@@ -54,7 +54,7 @@ namespace WordsAPI.Services
                     })
                     {
                         await smtpClient.SendMailAsync(mailMessage);
-                        _logger.LogInformation("Email de contato enviado com sucesso de {ContactEmail} para {ReceiverEmail}", contactFormDto.Email, _emailSettings.ReceiverEmail);
+                        _logger.LogInformation("Email de contato enviado com sucesso de {ContactEmail} para {ReceiverEmail}", contactFormDto.email, _emailSettings.ReceiverEmail);
                     }
                 }
             }
