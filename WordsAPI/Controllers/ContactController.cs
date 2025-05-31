@@ -14,10 +14,10 @@ namespace WordsAPI.Controllers
     [Produces(MediaTypeNames.Application.Json)] // Define o tipo de mídia padrão para as respostas
     public class ContactController : ControllerBase
     {
-        private readonly EmailService _emailService;
+        private readonly IEmailService _emailService;
         private readonly ILogger<ContactController> _logger;
 
-        public ContactController(EmailService emailService, ILogger<ContactController> logger)
+        public ContactController(IEmailService emailService, ILogger<ContactController> logger)
         {
             _emailService = emailService;
             _logger = logger;

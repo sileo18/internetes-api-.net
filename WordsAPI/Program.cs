@@ -13,8 +13,6 @@ using WordsAPI.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configuração de Email
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
-builder.Services.AddTransient<IEmailService, EmailService>();
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var configuration = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("RedisConnection"));
@@ -32,6 +30,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Registro de Repositórios e Serviços
 builder.Services.AddScoped<IWordRepository, WordRepository>();
 builder.Services.AddScoped<IWordService, WordService>();
+builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddTransient<IEmailService, EmailService>();
 
 // Configuração do Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer(); // Necessário para Minimal APIs no Swagger
