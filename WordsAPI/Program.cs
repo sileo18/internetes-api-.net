@@ -12,7 +12,6 @@ using WordsAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuração de Email
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var configuration = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("RedisConnection"));
@@ -21,32 +20,27 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 });
 builder.Services.AddScoped<ICacheService, CacheService>();
 
-// Configuração do DbContext com QuerySplittingBehavior.SplitQuery
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("PsqlConnection");
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
-           
-
-// Registro de Repositórios e Serviços
+          
 builder.Services.AddScoped<IWordRepository, WordRepository>();
 builder.Services.AddScoped<IWordService, WordService>();
 builder.Services.AddTransient<IEmailService, EmailService>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddTransient<IEmailService, EmailService>();
 
-// Configuração do Swagger/OpenAPI
-builder.Services.AddEndpointsApiExplorer(); // Necessário para Minimal APIs no Swagger
+builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "WordsAPI", Version = "v1", Description = "Uma API para gerenciar palavras e suas definições." });
-
-    // Configura para incluir os comentários XML gerados
+    
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     c.IncludeXmlComments(xmlPath);
 });
 
-// Configuração de Controllers e Serialização JSON
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -58,20 +52,20 @@ builder.Services.AddControllers()
 
 var app = builder.Build();
 
-// Configuração do Pipeline de Requisições HTTP
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        // Configurações para a UI do Swagger (opcional, mas comum)
+        
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Nome da sua API V1");
         c.RoutePrefix = string.Empty; // Para que a UI esteja na raiz (ex: http://localhost:5000/)
     });
 }
 else
 {
-    // Configurações para produção
+    
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
