@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
-using System.Net;
-using System.Net.Mail;
+using SendGrid; // Para SendGridClient
+using SendGrid.Helpers.Mail; // Para EmailAddress e SendGridMessage
+using System.Threading.Tasks;
 using WordsAPI.Config;
 using WordsAPI.DTO_s;
 
@@ -10,19 +11,22 @@ namespace WordsAPI.Services
     {
         private readonly EmailSettings _emailSettings;
         private readonly ILogger<EmailService> _logger;
+        private readonly ISendGridClient _sendGridClient; // Injetar o cliente SendGrid
 
-        public EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger)
+        // Modifique o construtor para receber ISendGridClient
+        public EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger, ISendGridClient sendGridClient)
         {
-            _emailSettings = emailSettings.Value; // Acessa o objeto EmailSettings configurado
+            _emailSettings = emailSettings.Value;
             _logger = logger;
+            _sendGridClient = sendGridClient; // Cliente SendGrid injetado
         }
 
         public async Task SendContactFormEmailAsync(ContactFormDTO contactFormDto)
         {
             try
             {
-                var fromAddress = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName);
-                var toAddress = new MailAddress(_emailSettings.ReceiverEmail); // Email que recebe o contato
+                var fromEmail = new EmailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName);
+                var toEmail = new EmailAddress(_emailSettings.ReceiverEmail); // Email que receberá o contato
 
                 string subject = $"Novo Contato do Site Internetes: {contactFormDto.subject}";
                 string body = $@"
@@ -35,33 +39,28 @@ namespace WordsAPI.Services
                     <hr>
                     <p><em>Este email foi enviado através do formulário de contato do site Internetes.</em></p>";
 
-                using (var smtpClient = new SmtpClient
+                var msg = MailHelper.CreateSingleEmail(fromEmail, toEmail, subject, "", body);
+                
+                // Opcional: Adicionar o email do contato como Reply-To para facilitar a resposta
+                msg.ReplyTo = new EmailAddress(contactFormDto.email, contactFormDto.name);
+
+                var response = await _sendGridClient.SendEmailAsync(msg);
+
+                if (response.IsSuccessStatusCode)
                 {
-                    Host = _emailSettings.SmtpHost,
-                    Port = _emailSettings.SmtpPort,
-                    EnableSsl = _emailSettings.EnableSsl, // Gmail requer SSL/TLS
-                    DeliveryMethod = SmtpDeliveryMethod.Network,
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(fromAddress.Address, _emailSettings.Password)
-                })
+                    _logger.LogInformation("Email de contato enviado com sucesso via SendGrid de {ContactEmail} para {ReceiverEmail}. Status: {StatusCode}", contactFormDto.email, _emailSettings.ReceiverEmail, response.StatusCode);
+                }
+                else
                 {
-                    using (var mailMessage = new MailMessage(fromAddress, toAddress)
-                    {
-                        Subject = subject,
-                        Body = body,
-                        IsBodyHtml = true, // Nosso corpo é HTML
-                        ReplyToList = { new MailAddress(contactFormDto.email, contactFormDto.name) } // Define o Reply-To
-                    })
-                    {
-                        await smtpClient.SendMailAsync(mailMessage);
-                        _logger.LogInformation("Email de contato enviado com sucesso de {ContactEmail} para {ReceiverEmail}", contactFormDto.email, _emailSettings.ReceiverEmail);
-                    }
+                    var responseBody = await response.Body.ReadAsStringAsync();
+                    _logger.LogError("Falha ao enviar email de contato via SendGrid de {ContactEmail} para {ReceiverEmail}. Status: {StatusCode}. Corpo: {ResponseBody}", contactFormDto.email, _emailSettings.ReceiverEmail, response.StatusCode, responseBody);
+                    throw new Exception($"Falha ao enviar email via SendGrid. Status: {response.StatusCode}. Detalhes: {responseBody}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao enviar email de contato de {ContactEmail}", contactFormDto.email);
-                throw; // Relança a exceção para ser tratada pelo controller ou middleware
+                _logger.LogError(ex, "Erro ao enviar email de contato (SendGrid) de {ContactEmail}", contactFormDto.email);
+                throw;
             }
         }
     }
