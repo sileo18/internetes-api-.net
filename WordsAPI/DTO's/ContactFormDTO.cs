@@ -1,20 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// DTOs/ContactFormDTO.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace WordsAPI.DTO_s
 {
-    public class ContactFormDTO
+    public class ContactFormDTO 
     {
-        [Required] public string name { get; set; } = null!;
-        
         [Required]
-        public string email { get; set; } = null!;
-        
-        public string subject {get; set; }
-        public string message {get; set; }
+        public string Name { get; set; } = string.Empty;
 
-        public string ToString()
-        {
-            return $"Name: {name}, Email: {email}, Subject: {subject}, Message: {message}";
-        }
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Subject { get; set; } = string.Empty;
+
+        [Required]
+        public string Message { get; set; } = string.Empty;
     }
 }

@@ -6,7 +6,8 @@ using Microsoft.OpenApi.Models;
 using SendGrid;
 using StackExchange.Redis; // Para IConnectionMultiplexer
 using WordsAPI.CacheService; // Seu serviço de cache
-using WordsAPI.Config;      // Suas configurações de email
+using WordsAPI.Config;
+using WordsAPI.Config.WordsAPI.Config; // Suas configurações de email
 using WordsAPI.Domain;      // Suas entidades de domínio
 using WordsAPI.Repositories; // Seus repositórios
 using WordsAPI.Services;     // Seus serviços
@@ -57,13 +58,13 @@ builder.Services.AddScoped<IWordService, WordService>();
 var sendGridApiKey = builder.Configuration.GetValue<string>("EmailSettings:SendGridApiKey");
 if (string.IsNullOrEmpty(sendGridApiKey))
 {
-    Console.WriteLine("Aviso: SendGrid API Key não encontrada. O serviço de email pode não funcionar.");
-    // Dependendo da sua lógica, você pode lançar uma exceção ou configurar um fallback para SMTP aqui.
-    // Para produção, isso DEVE ser um erro crítico.
+    Console.WriteLine("Aviso: SendGrid API Key não encontrada nas configurações. O serviço de email pode não funcionar.");
+    // Em produção, você pode querer que isso lance uma exceção e impeça a inicialização.
+    // throw new InvalidOperationException("SendGrid API Key é obrigatória para o serviço de email.");
 }
 else
 {
-    // Registra o cliente SendGrid
+    // Registra o cliente SendGrid para injeção de dependência
     builder.Services.AddSingleton<ISendGridClient>(new SendGridClient(sendGridApiKey));
 }
 
