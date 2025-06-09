@@ -35,9 +35,16 @@ namespace WordsAPI.Services
             
             var word = await _wordRepository.GetByIdAsync(id);
 
-            await _cacheService.SetAsync(cacheKey, word, TimeSpan.FromMinutes(5));
+            if (word == null)
+            {
+                return null;
+            }
+
+            var response = MapToResponseDto(word);
             
-            return word != null ? MapToResponseDto(word) : null;
+            await _cacheService.SetAsync(cacheKey, response, TimeSpan.FromMinutes(5));
+
+            return response;
         }
 
         public async Task<PaginatedWordsResponseDto> GetAllWordsAsync(int pageNumber, int pageSize)
@@ -74,26 +81,17 @@ namespace WordsAPI.Services
         {
             if (await _wordRepository.ExistsByTermAsync(createWordDto.Term))
             {
-                // Considerar lançar uma exceção específica que o controller possa tratar
-                // para retornar um status HTTP 409 (Conflict)
-                // throw new TermAlreadyExistsException($"O termo '{createWordDto.Term}' já existe.");
-                return null; // Indicando falha por termo duplicado
+                return null; 
             }
-
-            // 1. Crie a instância principal de Word
+            
             var word = new Word
             {
                 Term = createWordDto.Term,
                 Definition = createWordDto.Definition,
                 PartOfSpeech = createWordDto.PartOfSpeech,
                 CreatedAt = DateTime.UtcNow
-                // As coleções Examples e Synonyms serão inicializadas como vazias pelo construtor de Word
-                // Se não, inicialize-as aqui:
-                // ExamplesNavigation = new List<Example>(),
-                // SynonymsNavigation = new List<Synonym>()
             };
-
-            // 2. Crie e associe Examples, se houver
+            
             if (createWordDto.Examples != null && createWordDto.Examples.Any())
             {
                 foreach (var exampleContent in createWordDto.Examples)
@@ -183,12 +181,8 @@ namespace WordsAPI.Services
                 Definition = word.Definition,
                 PartOfSpeech = word.PartOfSpeech,
                 CreatedAt = (DateTime)word.CreatedAt,
-                // Correção aqui: Selecionar a propriedade 'Content' de cada Example/Synonym
-                Examples = word.ExamplesNavigation?.Select(e => e.Content).ToList() ?? new List<string>(),
-                Synonyms = word.SynonymsNavigation?.Select(s => s.Content).ToList() ?? new List<string>(),
-               // Adopted = word.Adopted,
-               // AdoptedByName = word.AdoptedByName,
-               // AdoptionDate = word.AdoptionDate
+                Examples = word.ExamplesNavigation?.Select(e => new ExampleDto { Id = e.Id, Content = e.Content }).ToList() ?? new List<ExampleDto>(),
+                Synonyms = word.SynonymsNavigation?.Select(s => new SynonymDto { Id = s.Id, Content = s.Content }).ToList() ?? new List<SynonymDto>(),
             };
         }
     }

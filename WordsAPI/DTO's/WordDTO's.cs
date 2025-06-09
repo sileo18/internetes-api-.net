@@ -25,14 +25,9 @@ namespace WordsAPI.DTO_s
         public string Definition { get; set; } = string.Empty;
         public string? PartOfSpeech { get; set; }
         public DateTime CreatedAt { get; set; }
-        public List<string> Examples { get; set; } = new List<string>();
-        public List<string> Synonyms { get; set; } = new List<string>();
-
-        // Campos de Adoção
-       // public bool Adopted { get; set; }
-       // public string? AdoptedByName { get; set; }
-       // public DateTime? AdoptionDate { get; set; }
-        // Não vamos expor platformId ou message aqui por padrão
+        public List<ExampleDto> Examples { get; set; } = new List<ExampleDto>();
+        public List<SynonymDto> Synonyms { get; set; } = new List<SynonymDto>();
+       
     }
 
     public class AdoptWordDto // DTO para o endpoint de adoção
@@ -54,4 +49,6 @@ namespace WordsAPI.DTO_s
         public bool HasPrevious => CurrentPage > 1;
         public bool HasNext => CurrentPage < TotalPages;
     }
+
+    
 }

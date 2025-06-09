@@ -17,10 +17,7 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Example> Examples { get; set; }
 
-    public virtual DbSet<FlywaySchemaHistory> FlywaySchemaHistories { get; set; }
-
     public virtual DbSet<Synonym> Synonyms { get; set; }
-
     public virtual DbSet<Word> Words { get; set; }
 
     public static double WordSimilarity(string? text1, string? text2)
@@ -44,14 +41,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("example_pkey");
 
             entity.HasOne(d => d.Word).WithMany(p => p.ExamplesNavigation).HasConstraintName("fk_example_word");
-        });
-
-        modelBuilder.Entity<FlywaySchemaHistory>(entity =>
-        {
-            entity.HasKey(e => e.InstalledRank).HasName("flyway_schema_history_pk");
-
-            entity.Property(e => e.InstalledRank).ValueGeneratedNever();
-            entity.Property(e => e.InstalledOn).HasDefaultValueSql("now()");
         });
 
         modelBuilder.Entity<Synonym>(entity =>

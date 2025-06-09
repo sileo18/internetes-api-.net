@@ -10,6 +10,12 @@ namespace WordsAPI.Domain;
 [Index("Term", Name = "word_term_key", IsUnique = true)]
 public partial class Word
 {
+
+    public Word()
+    {
+        
+    }
+    
     [Key]
     [Column("id")]
     public int Id { get; set; }
@@ -31,7 +37,7 @@ public partial class Word
     [Column("synonyms")]
     public List<string>? Synonyms { get; set; }
 
-    [Column("created_at", TypeName = "timestamp without time zone")]
+    [Column("created_at", TypeName = "timestamp with time zone")]
     public DateTime? CreatedAt { get; set; }
 
     [InverseProperty("Word")]
