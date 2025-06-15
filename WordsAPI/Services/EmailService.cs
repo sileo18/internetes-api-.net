@@ -29,7 +29,7 @@ namespace WordsAPI.Services
                 
                 var toEmail = new EmailAddress(_emailSettings.ReceiverEmail);
 
-                string subject = $"Novo Contato do Site Internetes: {contactFormDto.Subject}"; // Usar maiúsculas/minúsculas corretas de DTO
+                string subject = $"Novo Contato do Site Internetes: {contactFormDto.Subject}"; 
                 string body = $@"
                     <p>Você recebeu uma nova mensagem de contato do site Internetes:</p>
                     <p><strong>Nome:</strong> {contactFormDto.Name}</p>
@@ -53,7 +53,7 @@ namespace WordsAPI.Services
                 }
                 else
                 {
-                    var responseBody = await response.Body.ReadAsStringAsync(); // Tenta ler o corpo da resposta para mais detalhes
+                    var responseBody = await response.Body.ReadAsStringAsync(); 
                     _logger.LogError("Falha ao enviar email de contato via SendGrid de {ContactEmail} para {ReceiverEmail}. Status: {StatusCode}. Corpo: {ResponseBody}", contactFormDto.Email, _emailSettings.ReceiverEmail, response.StatusCode, responseBody);
                     throw new Exception($"Falha ao enviar email via SendGrid. Status: {response.StatusCode}. Detalhes: {responseBody}");
                 }
@@ -61,7 +61,7 @@ namespace WordsAPI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao enviar email de contato (SendGrid) de {ContactEmail}", contactFormDto.Email);
-                throw; // Relança a exceção para ser tratada pelo controller ou middleware
+                throw; 
             }
         }
     }

@@ -9,7 +9,7 @@ namespace WordsAPI.Repositories
         Task<IEnumerable<Word>> GetAllAsync(int pageNumber, int pageSize);
         Task<int> GetTotalCountAsync();
         Task<Word> AddAsync(Word word);
-        //Task<Word?> UpdateAsync(Word word); // Para marcar como adotada
+        //Task<Word?> UpdateAsync(Word word); 
         Task<IEnumerable<Word>> SearchByTermAsync(string termQuery);
         Task<bool> ExistsByTermAsync(string term);
     }

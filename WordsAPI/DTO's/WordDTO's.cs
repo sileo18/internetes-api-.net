@@ -30,13 +30,13 @@ namespace WordsAPI.DTO_s
        
     }
 
-    public class AdoptWordDto // DTO para o endpoint de adoção
+    public class AdoptWordDto 
     {
         [Required(ErrorMessage = "O nome do adotante é obrigatório ou indique anônimo.")]
         public string AdopterName { get; set; } = string.Empty;
 
-        public string? PlatformTransactionId { get; set; } // Opcional
-        public string? Message { get; set; } // Opcional
+        public string? PlatformTransactionId { get; set; } 
+        public string? Message { get; set; } 
     }
 
     public class PaginatedWordsResponseDto

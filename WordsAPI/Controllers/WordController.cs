@@ -10,7 +10,7 @@ namespace WordsAPI.Controllers
     /// </summary>
     [Route("api/word")] // Rota base: /api/word
     [ApiController]
-    [Produces(MediaTypeNames.Application.Json)] // Define o tipo de mídia padrão para as respostas
+    [Produces(MediaTypeNames.Application.Json)] 
     public class WordController : ControllerBase
     {
         private readonly IWordService _wordService;

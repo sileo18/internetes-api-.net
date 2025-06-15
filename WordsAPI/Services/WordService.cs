@@ -96,31 +96,25 @@ namespace WordsAPI.Services
             {
                 foreach (var exampleContent in createWordDto.Examples)
                 {
-                    var example = new Example(exampleContent); // Usando o construtor que exige 'content'
-                    // example.Content = exampleContent; // Se usar construtor vazio e setar a propriedade
-                    example.Word = word; // Define a referência de volta para a Word (importante!)
-                                         // Se WordId for exposto em Example e você não quiser definir a navegação completa:
-                                         // example.WordId = word.Id; // Isso só funcionaria se word já tivesse um Id (após salvar word primeiro)
-                                         // É melhor definir a propriedade de navegação 'Word'
-                    word.ExamplesNavigation.Add(example); // Adiciona à coleção da Word
+                    var example = new Example(exampleContent); 
+                    
+                    example.Word = word; 
+                    word.ExamplesNavigation.Add(example); 
                 }
             }
-
-            // 3. Crie e associe Synonyms, se houver
+            
             if (createWordDto.Synonyms != null && createWordDto.Synonyms.Any())
             {
                 foreach (var synonymContent in createWordDto.Synonyms)
                 {
-                    var synonym = new Synonym(synonymContent); // Usando o construtor
-                    // synonym.Content = synonymContent;
-                    synonym.Word = word; // Define a referência de volta para a Word
-                    word.SynonymsNavigation.Add(synonym); // Adiciona à coleção da Word
+                    var synonym = new Synonym(synonymContent); 
+                    
+                    synonym.Word = word; 
+                    word.SynonymsNavigation.Add(synonym); 
                 }
             }
-
-            // 4. Salve a Word (e o EF Core, devido ao Cascade e às associações, salvará Examples e Synonyms)
             var savedWord = await _wordRepository.AddAsync(word);
-            return MapToResponseDto(savedWord); // Mapeie a entidade salva (com IDs gerados) para o DTO
+            return MapToResponseDto(savedWord); 
         }
 
         public async Task<IEnumerable<WordResponseDto>> SearchWordsAsync(string termQuery)

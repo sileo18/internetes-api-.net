@@ -50,25 +50,24 @@ namespace WordsAPI.Repositories
 
         public async Task<IEnumerable<Word>> SearchByTermAsync(string termQuery)
         {
-            // Limite de similaridade
             const double similarityThreshold = 0.3;
             var queryLower = termQuery.ToLowerInvariant(); // Para ILIKE
 
-            // Construir a query
+            
             var query = _context.Words
-                .Include(w => w.ExamplesNavigation) // Ajuste para ExamplesNavigation se for o nome
-                .Include(w => w.SynonymsNavigation) // Ajuste para SynonymsNavigation se for o nome
-                .Select(w => new // Projetar para um objeto anônimo para incluir a similaridade
+                .Include(w => w.ExamplesNavigation) 
+                .Include(w => w.SynonymsNavigation) 
+                .Select(w => new 
                 {
                     Word = w,
                     SimilarityScore = ApplicationDbContext.WordSimilarity(w.Term, termQuery)
                 })
                 .Where(x => x.SimilarityScore > similarityThreshold ||
-                             EF.Functions.ILike(x.Word.Term, $"%{queryLower}%")// Fallback para ILIKE no termo
-                             ) // Opcional: ILIKE na definição também
-                .OrderByDescending(x => x.SimilarityScore) // Ordenar pela similaridade
-                .ThenBy(x => x.Word.Term) // Ordenação secundária (opcional)
-                .Select(x => x.Word); // Selecionar apenas a entidade Word no final
+                             EF.Functions.ILike(x.Word.Term, $"%{queryLower}%")
+                             ) 
+                .OrderByDescending(x => x.SimilarityScore) 
+                .ThenBy(x => x.Word.Term) 
+                .Select(x => x.Word); 
 
             return await query.ToListAsync();
         }

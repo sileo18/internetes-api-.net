@@ -11,7 +11,7 @@ namespace WordsAPI.Controllers
     /// </summary>
     [Route("api/contact")]
     [ApiController]
-    [Produces(MediaTypeNames.Application.Json)] // Define o tipo de mídia padrão para as respostas
+    [Produces(MediaTypeNames.Application.Json)]
     public class ContactController : ControllerBase
     {
         private readonly IEmailService _emailService;
