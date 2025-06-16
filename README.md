@@ -24,3 +24,9 @@ Uma API REST que funciona como um dicionário moderno, voltado para termos popul
 - **Banco de Dados**: PostgreSQL
 - **Caching**: Redis
 - **API**: .NET 8
+
+
+https://github.com/user-attachments/assets/851f8b81-3376-4fb1-907f-8f975767a655
+
+
+- 
