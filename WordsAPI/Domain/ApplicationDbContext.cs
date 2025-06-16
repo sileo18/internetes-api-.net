@@ -1,64 +1,91 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using WordsAPI.Domain;
 
-namespace WordsAPI.Domain;
-
-public partial class ApplicationDbContext : DbContext
+// Certifique-se de que o namespace do seu DbContext está correto.
+// Se ele estiver em uma pasta diferente, ajuste o namespace.
+namespace WordsAPI.Domain 
 {
-    public ApplicationDbContext()
+    public class ApplicationDbContext : DbContext
     {
-    }
-
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
-    {
-    }
-
-    public virtual DbSet<Example> Examples { get; set; }
-
-    public virtual DbSet<Synonym> Synonyms { get; set; }
-    public virtual DbSet<Word> Words { get; set; }
-
-    public static double WordSimilarity(string? text1, string? text2)
-            => throw new NotSupportedException("This method is for use with Entity Framework Core only.");
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.HasPostgresExtension("pg_trgm");
-
-        modelBuilder.HasDbFunction(typeof(ApplicationDbContext)
-                .GetMethod(nameof(WordSimilarity), new[] { typeof(string), typeof(string) })!)
-                .HasName("similarity") // Nome da função no PostgreSQL
-                .IsBuiltIn();
-
-        modelBuilder.Entity<Example>(entity =>
+        // Construtor padrão que o EF Core usará para criar uma instância
+        // durante as migrações e em tempo de execução.
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
         {
-            entity.HasKey(e => e.Id).HasName("example_pkey");
+        }
 
-            entity.HasOne(d => d.Word).WithMany(p => p.ExamplesNavigation).HasConstraintName("fk_example_word");
-        });
+        // DbSets representam as tabelas no seu banco de dados.
+        public DbSet<Word> Words { get; set; }
+        public DbSet<Synonym> Synonyms { get; set; }
+        public DbSet<Example> Examples { get; set; }
 
-        modelBuilder.Entity<Synonym>(entity =>
+        // Método stub para mapear a função `similarity` do Postgres.
+        // Ele nunca será executado em C#, apenas traduzido para SQL.
+        public static double WordSimilarity(string? text1, string? text2)
+                => throw new NotSupportedException("This method is for use with Entity Framework Core only.");
+
+        // OnModelCreating é onde configuramos o modelo de dados, relacionamentos e índices.
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            entity.HasKey(e => e.Id).HasName("synonym_pkey");
+            // --- Configurações Gerais do Banco de Dados ---
 
-            entity.HasOne(d => d.Word).WithMany(p => p.SynonymsNavigation).HasConstraintName("fk_synonym_word");
-        });
+            // 1. Habilita o uso da extensão pg_trgm para busca por similaridade.
+            //    Lembre-se de rodar 'CREATE EXTENSION pg_trgm;' no seu banco da Fly.io.
+            modelBuilder.HasPostgresExtension("pg_trgm");
 
-        modelBuilder.Entity<Word>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("word_pkey");
+            // 2. Mapeia nosso método C# `WordSimilarity` para a função SQL nativa `similarity`.
+            modelBuilder.HasDbFunction(typeof(ApplicationDbContext)
+                    .GetMethod(nameof(WordSimilarity), new[] { typeof(string), typeof(string) })!)
+                    .HasName("similarity") 
+                    .IsBuiltIn();
 
-            entity.HasIndex(e => e.Term, "idx_word_term_trgm")
-                .HasMethod("gin")
-                .HasOperators(new[] { "gin_trgm_ops" });
+            // --- Configuração da Entidade 'Word' ---
+            modelBuilder.Entity<Word>(entity =>
+            {
+                // Define o nome da tabela (embora já definido por [Table]).
+                entity.ToTable("word");
 
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-        });
+                // Define a chave primária.
+                entity.HasKey(e => e.Id);
 
-        OnModelCreatingPartial(modelBuilder);
+                // Define que a propriedade Term é única no banco.
+                entity.HasIndex(e => e.Term).IsUnique();
+
+                // Define o índice GIN para busca rápida com trigramas na coluna 'term'.
+                // Essencial para a performance da função `similarity`.
+                entity.HasIndex(e => e.Term, "idx_word_term_trgm")
+                    .HasMethod("gin")
+                    .HasOperators("gin_trgm_ops");
+
+                // Configura o valor padrão para a data de criação no banco.
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            // --- Configuração da Entidade 'Example' ---
+            modelBuilder.Entity<Example>(entity =>
+            {
+                entity.ToTable("example");
+                entity.HasKey(e => e.Id);
+
+                // Configura o relacionamento "um-para-muitos": Uma Palavra (Word) tem muitos Exemplos (Example).
+                entity.HasOne(example => example.Word)            // Um exemplo tem uma palavra...
+                      .WithMany(word => word.ExamplesNavigation)   // ...e uma palavra tem muitos exemplos.
+                      .HasForeignKey(example => example.WordId)    // A chave estrangeira está em Example.WordId.
+                      .OnDelete(DeleteBehavior.Cascade);           // Se uma palavra for deletada, seus exemplos também serão.
+            });
+
+            // --- Configuração da Entidade 'Synonym' ---
+            modelBuilder.Entity<Synonym>(entity =>
+            {
+                entity.ToTable("synonym");
+                entity.HasKey(e => e.Id);
+                
+                // Configura o relacionamento "um-para-muitos": Uma Palavra (Word) tem muitos Sinônimos (Synonym).
+                entity.HasOne(synonym => synonym.Word)          // Um sinônimo tem uma palavra...
+                      .WithMany(word => word.SynonymsNavigation) // ...e uma palavra tem muitos sinônimos.
+                      .HasForeignKey(synonym => synonym.WordId)  // A chave estrangeira está em Synonym.WordId.
+                      .OnDelete(DeleteBehavior.Cascade);         // Se uma palavra for deletada, seus sinônimos também serão.
+            });
+        }
     }
-
-    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }

@@ -2,18 +2,16 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore; // <-- ADICIONE ESTA LINHA
 
 namespace WordsAPI.Domain;
 
 [Table("word")]
-[Index("Term", Name = "word_term_key", IsUnique = true)]
+[Index(nameof(Term), IsUnique = true)] // Corrigido para ser mais seguro
 public partial class Word
 {
-
     public Word()
     {
-        
     }
     
     [Key]
@@ -31,15 +29,9 @@ public partial class Word
     [StringLength(50)]
     public string? PartOfSpeech { get; set; }
 
-    [Column("examples")]
-    public List<string>? Examples { get; set; }
-
-    [Column("synonyms")]
-    public List<string>? Synonyms { get; set; }
-
     [Column("created_at", TypeName = "timestamp with time zone")]
     public DateTime? CreatedAt { get; set; }
-
+    
     [InverseProperty("Word")]
     public virtual ICollection<Example> ExamplesNavigation { get; set; } = new List<Example>();
 

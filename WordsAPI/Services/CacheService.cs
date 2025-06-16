@@ -2,50 +2,41 @@ using System.Text.Json;
 using StackExchange.Redis;
 using WordsAPI.CacheService;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace WordsAPI.Services;
 
 public class CacheService : ICacheService
 {
-    private readonly IDatabase _cacheDb;
+    private readonly IDistributedCache _cache; // <-- Injeção CORRETA
 
-    public CacheService(IConnectionMultiplexer redis)
+    public CacheService(IDistributedCache cache) // <-- Construtor CORRETO
     {
-        _cacheDb = redis.GetDatabase();
+        _cache = cache;
     }
-    
-    public async Task<T> GetAsync<T>(string key)
-    {
-        var value = await _cacheDb.StringGetAsync(key);
 
-        if (value.IsNullOrEmpty)
+    public async Task<T?> GetCacheData<T>(string key)
+    {
+        var jsonData = await _cache.GetStringAsync(key);
+        if (string.IsNullOrEmpty(jsonData))
         {
             return default;
         }
-        return JsonSerializer.Deserialize<T?>(value);
+        return JsonSerializer.Deserialize<T>(jsonData);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
+    public async Task SetCacheData<T>(string key, T value, TimeSpan? absoluteExpireTime = null)
     {
-        var serializedValue = JsonSerializer.Serialize(value);
-        await _cacheDb.StringSetAsync(key, serializedValue, expiry);
-    }
-
-    public async Task RemoveAsync(string key)
-    {
-        await _cacheDb.KeyDeleteAsync(key);
-    }
-
-    public async Task ClearCacheAsync(string pattern = "*")
-    {
-        var endpoints = _cacheDb.Multiplexer.GetEndPoints();
-        foreach (var endpoint in endpoints)
+        var options = new DistributedCacheEntryOptions
         {
-            var server = _cacheDb.Multiplexer.GetServer(endpoint);
-            foreach (var key in server.Keys(pattern: pattern))
-            {
-                await _cacheDb.KeyDeleteAsync(key);
-            }
-        }
+            AbsoluteExpirationRelativeToNow = absoluteExpireTime ?? TimeSpan.FromMinutes(30)
+        };
+        var jsonData = JsonSerializer.Serialize(value);
+        await _cache.SetStringAsync(key, jsonData, options);
     }
-}
+
+    public async Task RemoveCacheData(string key)
+    {
+        await _cache.RemoveAsync(key);
+    }
+   }
