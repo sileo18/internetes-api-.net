@@ -1,29 +1,51 @@
-// Program.cs
-
-using System.Reflection;
+sing System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using SendGrid;
-// using StackExchange.Redis; // Este 'using' não é necessário para AddStackExchangeRedisCache
+using Npgsql; // Adicione esta importação para usar NpgsqlConnectionStringBuilder
 using WordsAPI.CacheService;
 using WordsAPI.Config;
-using WordsAPI.Config.WordsAPI.Config;
+using WordsAPI.Config.WordsAPI.Config; // Certifique-se que este namespace é válido
 using WordsAPI.Domain;
 using WordsAPI.Repositories;
 using WordsAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Registro de Serviços e Repositórios ---
-
+// --- Configuração da Conexão com o Banco de Dados PostgreSQL ---
 var psqlConnectionString = builder.Configuration.GetConnectionString("PsqlConnection");
+
+// Verifica se a DATABASE_URL existe e é uma URL no formato "postgres://"
+if (!string.IsNullOrEmpty(psqlConnectionString) && psqlConnectionString.StartsWith("postgres://"))
+{
+    // Converte a URL do PostgreSQL para uma ConnectionString do Npgsql no formato chave-valor
+    var uri = new Uri(psqlConnectionString);
+    var userInfo = uri.UserInfo.Split(':');
+
+    var connStringBuilder = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432, // Usa a porta da URI ou a padrão 5432
+        Database = uri.Segments.Last().Trim('/'), // Pega o nome do banco de dados da URI
+        Username = userInfo[0],
+        Password = userInfo.Length > 1 ? userInfo[1] : null,
+        // Adicione outras opções de SSL se necessário, como SslMode e TrustServerCertificate
+        // SslMode.Prefer é um bom ponto de partida para a maioria dos deploys na Fly.io
+        SslMode = SslMode.Prefer, 
+        TrustServerCertificate = true 
+    };
+    // Sobrescreve a ConnectionString na configuração para que o DbContext use o formato correto
+    psqlConnectionString = connStringBuilder.ToString();
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(psqlConnectionString));
 
-var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection"); // Use o nome da chave do seu appsettings.json
+// --- Registro de Outros Serviços e Repositórios ---
+
+var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection"); 
 builder.Services.AddStackExchangeRedisCache(options => {
     options.Configuration = redisConnectionString;
-    
     options.InstanceName = "WordsAPI_"; 
 });
 
@@ -32,7 +54,7 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 builder.Services.AddSingleton<ISendGridClient>(sp => 
 {
     var apiKey = sp.GetRequiredService<IConfiguration>()
-        .GetValue<string>("EmailSettings:SendGridApiKey");
+        .GetValue<string>("SendGrid:ApiKey");
     return new SendGridClient(apiKey);
 });
 
@@ -41,9 +63,6 @@ builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IWordRepository, WordRepository>();
 builder.Services.AddScoped<IWordService, WordService>();
 builder.Services.AddTransient<IEmailService, EmailService>();
-
-
-
 
 
 builder.Services.AddControllers()
@@ -65,6 +84,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Endpoint de Health Check
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
 if (app.Environment.IsDevelopment())
