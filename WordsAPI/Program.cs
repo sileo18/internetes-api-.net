@@ -1,11 +1,11 @@
-sing System.Reflection;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+using Npgsql;
 using SendGrid;
-using Npgsql; // Adicione esta importação para usar NpgsqlConnectionStringBuilder
+using StackExchange.Redis;
+using System.Reflection;
 using WordsAPI.CacheService;
 using WordsAPI.Config;
-using WordsAPI.Config.WordsAPI.Config; // Certifique-se que este namespace é válido
+using WordsAPI.Config.WordsAPI.Config;
 using WordsAPI.Domain;
 using WordsAPI.Repositories;
 using WordsAPI.Services;
@@ -13,51 +13,43 @@ using WordsAPI.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Configuração da Conexão com o Banco de Dados PostgreSQL ---
-var psqlConnectionString = builder.Configuration.GetConnectionString("PsqlConnection");
+// A MÁGICA ACONTECE AQUI: O .NET vai ler a variável de ambiente `ConnectionStrings__DefaultConnection`
+// e o provedor Npgsql do Entity Framework sabe como lidar com a URL do Railway.
+var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Verifica se a DATABASE_URL existe e é uma URL no formato "postgres://"
-if (!string.IsNullOrEmpty(psqlConnectionString) && psqlConnectionString.StartsWith("postgres://"))
+// Adicionamos as opções de SSL necessárias para o Railway
+var connStringBuilder = new NpgsqlConnectionStringBuilder(psqlConnectionString)
 {
-    // Converte a URL do PostgreSQL para uma ConnectionString do Npgsql no formato chave-valor
-    var uri = new Uri(psqlConnectionString);
-    var userInfo = uri.UserInfo.Split(':');
-
-    var connStringBuilder = new NpgsqlConnectionStringBuilder
-    {
-        Host = uri.Host,
-        Port = uri.Port > 0 ? uri.Port : 5432, // Usa a porta da URI ou a padrão 5432
-        Database = uri.Segments.Last().Trim('/'), // Pega o nome do banco de dados da URI
-        Username = userInfo[0],
-        Password = userInfo.Length > 1 ? userInfo[1] : null,
-        // Adicione outras opções de SSL se necessário, como SslMode e TrustServerCertificate
-        // SslMode.Prefer é um bom ponto de partida para a maioria dos deploys na Fly.io
-        SslMode = SslMode.Prefer, 
-        TrustServerCertificate = true 
-    };
-    // Sobrescreve a ConnectionString na configuração para que o DbContext use o formato correto
-    psqlConnectionString = connStringBuilder.ToString();
-}
+    SslMode = SslMode.Require, // Railway exige SSL
+    TrustServerCertificate = true // Necessário para a conexão com o Railway
+};
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(psqlConnectionString));
+    options.UseNpgsql(connStringBuilder.ToString()));
 
-// --- Registro de Outros Serviços e Repositórios ---
+// --- Configuração da Conexão com o Redis ---
+// A MESMA MÁGICA: O .NET lê `ConnectionStrings__Redis` e o cliente do Redis faz o resto.
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
-var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection"); 
 builder.Services.AddStackExchangeRedisCache(options => {
     options.Configuration = redisConnectionString;
-    options.InstanceName = "WordsAPI_"; 
+    options.InstanceName = "WordsAPI_";
 });
 
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
-builder.Services.AddSingleton<ISendGridClient>(sp => 
+// --- Configuração de outros serviços (SendGrid, Repositories, etc.) ---
+// Esta parte já estava boa!
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddSingleton<ISendGridClient>(sp =>
 {
-    var apiKey = sp.GetRequiredService<IConfiguration>()
-        .GetValue<string>("SendGrid:ApiKey");
+    // Lê a chave da seção 'SendGrid:ApiKey', que mapeia para a variável `SendGrid__ApiKey`
+    var apiKey = sp.GetRequiredService<IConfiguration>().GetValue<string>("SendGrid:ApiKey");
+    if (string.IsNullOrEmpty(apiKey))
+    {
+        throw new InvalidOperationException("A chave da API do SendGrid não foi configurada.");
+    }
     return new SendGridClient(apiKey);
 });
-
 
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IWordRepository, WordRepository>();
@@ -73,7 +65,7 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "WordsAPI", Version = "v1", Description = "Uma API para gerenciar palavras e suas definições." });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "WordsAPI", Version = "v1" });
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -82,31 +74,56 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+// --- Configuração de CORS (Política de Compartilhamento de Recursos) ---
+var frontEndUrl = builder.Configuration.GetValue<string>("FRONTEND_URL");
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (string.IsNullOrEmpty(frontEndUrl))
+        {
+            // Política mais restrita se a URL não for fornecida (ou para produção)
+            // Ou permita qualquer origem para desenvolvimento se preferir
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            Console.WriteLine("WARN: FRONTEND_URL not set. Allowing any origin for CORS.");
+        }
+        else
+        {
+            // Política específica para sua aplicação frontend
+            policy.WithOrigins(frontEndUrl)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
+});
+
+
 var app = builder.Build();
 
-// Endpoint de Health Check
+// Endpoint de Health Check que o Railway usa
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
+// Configuração do pipeline de requisição HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "WordsAPI V1");
-        c.RoutePrefix = string.Empty;
-    });
-}
-else
-{
-    app.UseExceptionHandler("/error"); 
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Habilita o Swagger em qualquer ambiente, mas a UI só na rota /swagger
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "WordsAPI V1");
+    // Para acessar o Swagger na raiz da URL (ex: https://sua-api.up.railway.app/)
+    c.RoutePrefix = string.Empty; 
+});
+
+
+// app.UseHttpsRedirection(); // Comentado - O proxy reverso do Railway já lida com HTTPS. Habilitar isso pode causar loops de redirect.
 app.UseRouting();
 
-app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()); 
+// Aplica a política de CORS definida acima
+app.UseCors();
 
 app.MapControllers();
 
