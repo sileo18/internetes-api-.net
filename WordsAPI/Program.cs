@@ -13,7 +13,7 @@ using WordsAPI.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 
-var psqlConnectionString = builder.Configuration.GetConnectionString("DATABASE_URL");
+var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrEmpty(psqlConnectionString))
 {
@@ -31,7 +31,7 @@ var connStringBuilder = new NpgsqlConnectionStringBuilder(psqlConnectionString)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connStringBuilder.ToString()));
 
-var redisConnectionString = builder.Configuration.GetConnectionString("REDIS_URL");
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
 builder.Services.AddStackExchangeRedisCache(options => {
     options.Configuration = redisConnectionString;
