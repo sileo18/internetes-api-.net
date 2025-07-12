@@ -15,11 +15,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Adicionamos as opções de SSL necessárias para o Railway
+if (string.IsNullOrEmpty(psqlConnectionString))
+{
+    // Lança um erro claro se a connection string não for encontrada.
+    // Isso é melhor do que deixar o Npgsql falhar com uma mensagem genérica.
+    throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
+}
+
 var connStringBuilder = new NpgsqlConnectionStringBuilder(psqlConnectionString)
 {
-    SslMode = SslMode.Require, // Railway exige SSL
-    TrustServerCertificate = true // Necessário para a conexão com o Railway
+    SslMode = SslMode.Require,
+    TrustServerCertificate = true
 };
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
