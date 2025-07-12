@@ -12,9 +12,7 @@ using WordsAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Configuração da Conexão com o Banco de Dados PostgreSQL ---
-// A MÁGICA ACONTECE AQUI: O .NET vai ler a variável de ambiente `ConnectionStrings__DefaultConnection`
-// e o provedor Npgsql do Entity Framework sabe como lidar com a URL do Railway.
+
 var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // Adicionamos as opções de SSL necessárias para o Railway
@@ -27,8 +25,6 @@ var connStringBuilder = new NpgsqlConnectionStringBuilder(psqlConnectionString)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connStringBuilder.ToString()));
 
-// --- Configuração da Conexão com o Redis ---
-// A MESMA MÁGICA: O .NET lê `ConnectionStrings__Redis` e o cliente do Redis faz o resto.
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
 builder.Services.AddStackExchangeRedisCache(options => {
@@ -37,8 +33,6 @@ builder.Services.AddStackExchangeRedisCache(options => {
 });
 
 
-// --- Configuração de outros serviços (SendGrid, Repositories, etc.) ---
-// Esta parte já estava boa!
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddSingleton<ISendGridClient>(sp =>
 {
@@ -99,6 +93,12 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
 
 // Endpoint de Health Check que o Railway usa
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
