@@ -12,18 +12,22 @@ using WordsAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = ConnectionHelper.GetConnectionString(builder.Configuration);
+builder.Services.AddDbContext<ApplicationDbContext>(option =>
+    option.UseNpgsql(connectionString));
 
-var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-if (string.IsNullOrEmpty(psqlConnectionString))
-{
+//var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+//if (string.IsNullOrEmpty(psqlConnectionString))
+//{
     // Lança um erro claro se a connection string não for encontrada.
     // Isso é melhor do que deixar o Npgsql falhar com uma mensagem genérica.
-    throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
-}
+//    throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
+//}
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(psqlConnectionString));
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+ //   options.UseNpgsql(psqlConnectionString));
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
@@ -93,6 +97,16 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<ApplicationDbContext>();
+
+    await context.Database.MigrateAsync();
+
+    await DataHelper.ManageDatabaseAsync(scope.ServiceProvider);
+}
 
 // Endpoint de Health Check que o Railway usa
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
