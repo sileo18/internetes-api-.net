@@ -22,14 +22,10 @@ if (string.IsNullOrEmpty(psqlConnectionString))
     throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
 }
 
-var connStringBuilder = new NpgsqlConnectionStringBuilder(psqlConnectionString)
-{
-    SslMode = SslMode.Require,
-    TrustServerCertificate = true
-};
+string finalConnectionString = $"{psqlConnectionString};SslMode=Require;Trust Server Certificate=true;";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connStringBuilder.ToString()));
+    options.UseNpgsql(finalConnectionString.ToString()));
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
