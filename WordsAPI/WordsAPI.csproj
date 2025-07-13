@@ -13,23 +13,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- Use uma versão estável do EF Core 8, ex: 8.0.4 ou 8.0.5 -->
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.4" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.4">
+		<!-- Use a versão mais recente do EF Core 8 -->
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.7" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.7">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.4">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.7">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.8" />
-		<!-- Use uma versão do Npgsql compatível com EF Core 8, ex: 8.0.2 ou 8.0.3 -->
-		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.2" />
+		<!-- Use a versão mais recente do Npgsql compatível com EF Core 8 -->
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
 		<PackageReference Include="SendGrid" Version="9.29.3" />
 		<PackageReference Include="StackExchange.Redis" Version="2.8.37" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-		<!-- Esta versão parece ok para .NET 8 -->
 	</ItemGroup>
 
 </Project>
