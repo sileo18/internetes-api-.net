@@ -10,6 +10,10 @@ using WordsAPI.Domain;
 using WordsAPI.Repositories;
 using WordsAPI.Services;
 
+var rawDatabaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+Console.WriteLine($"[INIT_DEBUG] RAW DATABASE_URL from Environment: {rawDatabaseUrl}");
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = ConnectionHelper.GetConnectionString(builder.Configuration);
