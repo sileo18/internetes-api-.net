@@ -16,22 +16,17 @@ Console.WriteLine($"[INIT_DEBUG] RAW DATABASE_URL from Environment: {rawDatabase
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = ConnectionHelper.GetConnectionString(builder.Configuration);
-builder.Services.AddDbContext<ApplicationDbContext>(option =>
-    option.UseNpgsql(connectionString));
+var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-
-//var psqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-//if (string.IsNullOrEmpty(psqlConnectionString))
-//{
+if (string.IsNullOrEmpty(psqlConnectionString))
+{
     // Lança um erro claro se a connection string não for encontrada.
     // Isso é melhor do que deixar o Npgsql falhar com uma mensagem genérica.
-//    throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
-//}
+    throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
+}
 
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
- //   options.UseNpgsql(psqlConnectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(psqlConnectionString));
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
