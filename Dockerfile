@@ -14,14 +14,13 @@ WORKDIR /app
 COPY --from=build /app/publish .
 EXPOSE 8080
 
-# ======================= A CORREÇÃO FINAL ESTÁ AQUI =======================
-# 1. Instala a ferramenta de linha de comando do Entity Framework.
+# Instala a ferramenta 'ef'
 RUN dotnet tool install --global dotnet-ef
 
-# 2. Adiciona o diretório de ferramentas do .NET ao PATH do sistema.
-#    Isso garante que o comando 'dotnet-ef' possa ser encontrado pelo shell.
+# Adiciona o diretório de ferramentas ao PATH
 ENV PATH="$PATH:/root/.dotnet/tools"
-# ==========================================================================
 
-# Este ENTRYPOINT agora VAI funcionar porque a ferramenta 'dotnet-ef' foi instalada.
-ENTRYPOINT ["/bin/sh", "-c", "dotnet ef database update --connection \"$DATABASE_URL\" && dotnet WordsAPI.dll"]
+# ======================= A CORREÇÃO FINAL ESTÁ AQUI =======================
+# Adicionamos a flag '--startup-project' para dizer ao 'ef' qual DLL inspecionar.
+ENTRYPOINT ["/bin/sh", "-c", "dotnet ef database update --startup-project WordsAPI.dll --connection \"$DATABASE_URL\" && dotnet WordsAPI.dll"]
+# ==========================================================================
