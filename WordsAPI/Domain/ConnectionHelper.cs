@@ -45,7 +45,6 @@ private static string BuildConnectionString(string databaseUrl)
             Username = userInfo[0],
             Password = userInfo[1],
             Database = databaseUri.LocalPath.TrimStart('/'),
-            SslMode = SslMode.Prefer,
         };
         var finalBuiltString = builder.ToString();
         Console.WriteLine($"[DEBUG] Connection String built by NpgsqlConnectionStringBuilder: {finalBuiltString}");
