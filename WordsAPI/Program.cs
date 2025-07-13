@@ -119,6 +119,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
+
 // Endpoint de Health Check que o Railway usa
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
