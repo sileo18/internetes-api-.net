@@ -22,33 +22,8 @@ if (string.IsNullOrEmpty(psqlConnectionString))
     throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada. Verifique se a variável de ambiente 'ConnectionStrings__DefaultConnection' está configurada corretamente.");
 }
 
-static string ConvertUrlToConnectionString(string url)
-{
-    if (!url.StartsWith("postgres://"))
-    {
-        // Se já estiver no formato correto, retorna como está.
-        return url;
-    }
-
-    var uri = new Uri(url);
-    var userInfo = uri.UserInfo.Split(':');
-
-    return new NpgsqlConnectionStringBuilder
-    {
-        Host = uri.Host,
-        Port = uri.Port,
-        Username = userInfo[0],
-        Password = userInfo[1],
-        Database = uri.AbsolutePath.Trim('/'),
-        SslMode = SslMode.Require,
-        TrustServerCertificate = true
-    }.ToString();
-}
-
-var finalConnectionString = ConvertUrlToConnectionString(psqlConnectionString);
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(finalConnectionString.ToString()));
+    options.UseNpgsql(psqlConnectionString));
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 
@@ -118,12 +93,6 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
-}
 
 // Endpoint de Health Check que o Railway usa
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
